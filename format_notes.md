@@ -81,7 +81,7 @@ The following `tag` values are currently supported:
 
 The presence of certain section tags indicates that data in another section is compressed.
 
-TODO TEST IF GZIP DATA ISN'T ACTUALLY GZIP
+In cases where data is supposed to be compressed with gzip, it is possible to store uncompressed data instead as long as the uncompressed data does not start with a gzip header (0x1F 0x8B). There is usually no point in doing this, but this can be used to store uncompressed data in the `LT_SECTION_ZDICTIONARY` section.
 
 (TODO CHECK THE FOLLOWING) The size of the compressed data in bytes should be specified as the value of a `*_SIZE` section, although having an accurate value is only important on Windows. On non-Windows, the value merely has to be nonzero.
 
@@ -158,7 +158,7 @@ The number of bytes that will be decompressed is stored as the value of the `LT_
 
 #### `LT_SECTION_ZDICTIONARY`
 
-This section is always compressed. TODO TODO TODO
+This section is always compressed with gzip and will be explained later in this document.
 
 ### Linear LXT
 
@@ -326,3 +326,45 @@ All values are 32 bits.
 `LT_SYM_F_ALIAS` indicates that this facility is an alias for another facility. Other flags will be ignored.
 
 Flags seem like they are supposed to be mutually-exclusive, but GTKWave does not explicitly forbid usage where they are not.
+
+#### `LT_SECTION_SYNC_TABLE`
+
+| Section contents              |
+| ----------------------------- |
+| `offset[0]`                   |
+| `offset[1]`                   |
+| ...                           |
+| `offset[n]`                   |
+
+If this section is present, it contains offsets to the final (latest in time) value change for each facility.
+
+If this section is not present, it indicates the LXT file is encoded with linear encoding.
+
+#### `LT_SECTION_ZDICTIONARY`
+
+| Section contents              |
+| ----------------------------- |
+| `dict_num_entries`            |
+| `dict_string_mem_required`    |
+| `dict_16_offset`              |
+| `dict_24_offset`              |
+| `dict_32_offset`              |
+| `dict_width`                  |
+| gzip compressed entries       |
+
+A dictionary can be used to compress wide facilities that contain frequent repeated values. Instead of encoding the value every time, an index into the dictionary is encoded instead.
+
+All of the listed header fields are 32 bits.
+
+Dictionary entries are compressed with gzip. The size of the gzip-compressed data is stored as the value of the `LT_SECTION_ZDICTIONARY_SIZE` section. The number of bytes that will be decompressed is stored in `dict_string_mem_required`.
+
+`dict_num_entries` contains the number of entries in the dictionary.
+
+Dictionary indices within change data are variable size. `dict_16_offset` indicates the file offset starting from which indices become 16 bits wide. Before this offset (or if this offset is 0), indices are 8 bits wide. Likewise, `dict_24_offset` indicates the file offset starting from which indices become 24 bits wide. Before this offset (or if this offset is 0), indices are 8 or 16 bits wide. `dict_32_offset` indicates the file offset starting from which indices become 32 bits wide. Before this offset (or if this offset is 0), indices are 8/16/24 bits wide.
+
+Facilities will only index into the dictionary if they are greater than `dict_width` bits wide. Smaller facilities will contain inline MVL2 data as normal.
+
+The compressed data consists of a sequence of null-terminated ASCII MVL9 strings (i.e. consisting of the characters `01ZXHUWL-`). 
+
+When a dictionary entry is referenced, it is prepended (i.e. on the left/MSB) with a leading 1 bit. It is then padded to the width of the facility with 0 bits. <span style="color:red">If this exceeds the size of the facility (i.e. the string in the dictionary is greater than the facility width minus 1) then memory is overwritten with '0' characters until a segfault occurs.</span> Out-of-range indices cause a nonfatal error and result in a value consisting of all 0 bits.
+
