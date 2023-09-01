@@ -278,3 +278,51 @@ Each name consists of a 16-bit `prefix_bytes` followed by a null-terminated stri
 It is unspecified what happens if duplicate names are found, but GTKWave will display only one of them.
 
 Names must be UTF-8. Invalid UTF-8 will cause GTKWave to segfault (at least on macOS).
+
+#### `LT_SECTION_FACNAME_GEOMETRY`
+
+| Section contents              |
+| ----------------------------- |
+| `rows[0]` / `alias_idx[0]`    |
+| `msb[0]`                      |
+| `lsb[0]`                      |
+| `flags[0]`                    |
+| `rows[1]` / `alias_idx[1]`    |
+| `msb[1]`                      |
+| `lsb[1]`                      |
+| `flags[1]`                    |
+| ...                           |
+| `rows[n]` / `alias_idx[n]`    |
+| `msb[n]`                      |
+| `lsb[n]`                      |
+| `flags[n]`                    |
+
+All values are 32 bits.
+
+`rows` is used when `flags` does not contain the flag `LT_SYM_F_ALIAS`. It is supposed to be used to indicate the size of an array, but setting it to anything other than 0 breaks the importing of the trace into GTKWave (`/* sorry, arrays not supported */`).
+
+`alias_idx` is used when `flags` does contain the flag `LT_SYM_F_ALIAS`. It contains an index to another facility to which this facility is an alias to. If there is an alias cycle, GTKWave will infinite loop forever while parsing. <span style="color:red">If the alias is out-of-bounds, invalid memory will be accessed.</span>
+
+`msb` and `lsb` are signed integers containing the MSB and LSB indices of a vector. The bit width of this facility is 1 greater than the difference between these values. If both of these are -1, GTKWave will not append any brackets to the end of the name.
+
+`flags` modify the interpretation of the facility and some of the other fields. The following flags are defined:
+
+| Flag                  | Val   |
+| --------------------- | ----- |
+| `LT_SYM_F_BITS`       | 0     |
+| `LT_SYM_F_INTEGER`    | 1<<0  |
+| `LT_SYM_F_DOUBLE`     | 1<<1  |
+| `LT_SYM_F_STRING`     | 1<<2  |
+| `LT_SYM_F_ALIAS`      | 1<<3  |
+
+`LT_SYM_F_BITS` is not an actual flag at all and is the default interpretation of the facility.
+
+`LT_SYM_F_INTEGER` forces `msb` to 31 and `lsb` to 0 and forces brackets to not display in the name.
+
+`LT_SYM_F_DOUBLE` indicates that this facility contains floating-point values. `msb` and `lsb` will be ignored.
+
+`LT_SYM_F_STRING` indicates that this facility contains string values. `msb` and `lsb` will be ignored.
+
+`LT_SYM_F_ALIAS` indicates that this facility is an alias for another facility. Other flags will be ignored.
+
+Flags seem like they are supposed to be mutually-exclusive, but GTKWave does not explicitly forbid usage where they are not.
