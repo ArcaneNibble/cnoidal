@@ -12,7 +12,7 @@ The design goals for this format _appear_ to have been:
 
 ### Overall structure
 
-Unless otherwise stated, all values are **big-endian**. Out-of-range offsets and undersized sections are, in general, not checked and cause invalid data to be read.
+Unless otherwise stated, all values are **big-endian**. <span style="color:red">Out-of-range offsets and undersized sections are, in general, not checked and cause invalid data to be read.</span>
 
 An LXT is structured like the following:
 
@@ -83,6 +83,10 @@ The presence of certain section tags indicates that data in another section is c
 
 TODO TEST IF GZIP DATA ISN'T ACTUALLY GZIP
 
+(TODO CHECK THE FOLLOWING) The size of the compressed data in bytes should be specified as the value of a `*_SIZE` section, although having an accurate value is only important on Windows. On non-Windows, the value merely has to be nonzero.
+
+(TODO CHECK THE FOLLOWING). If the compressed stream contains fewer bytes than expected (either specified by a `*_PREDEC_SIZE` tag or otherwise computed), an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than expected, the remaining bytes are ignored.
+
 #### `LT_SECTION_ZFACNAME_SIZE`
 
 If this section is present and nonzero, it indicates that data in the `LT_SECTION_FACNAME` section is compressed with gzip. The data that is compressed includes everything **except** the first 8 bytes (consisting of `number_of_facilities` and `facility_name_total_memory`):
@@ -93,9 +97,9 @@ If this section is present and nonzero, it indicates that data in the `LT_SECTIO
 | `facility_name_total_memory`  |
 | gzip compressed data          |
 
-The size of the gzip-compressed data is stored as the value of this section (TODO CHECK THE FOLLOWING), although having an accurate value is only important on Windows.
+The size of the gzip-compressed data is stored as the value of this section.
 
-The number of bytes that will be decompressed is stored as the value of the `LT_SECTION_ZFACNAME_PREDEC_SIZE` section. (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
+The number of bytes that will be decompressed is stored as the value of the `LT_SECTION_ZFACNAME_PREDEC_SIZE` section.
 
 #### `LT_SECTION_ZFACNAME_GEOMETRY_SIZE`
 
@@ -105,9 +109,9 @@ If this section is present and nonzero, it indicates that data in the `LT_SECTIO
 | ----------------------------- |
 | gzip compressed data          |
 
-The size of the gzip-compressed data is stored as the value of this section (TODO CHECK THE FOLLOWING), although having an accurate value is only important on Windows.
+The size of the gzip-compressed data is stored as the value of this section.
 
-The number of bytes that will be decompressed is 16 * the total number of facilities (found in the  `LT_SECTION_FACNAME` section). (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
+The number of bytes that will be decompressed is 16 * the total number of facilities (found in the  `LT_SECTION_FACNAME` section).
 
 #### `LT_SECTION_ZSYNC_SIZE`
 
@@ -117,9 +121,9 @@ This section is only read if `LT_SECTION_SYNC_TABLE` is present and nonzero. If 
 | ----------------------------- |
 | gzip compressed data          |
 
-The size of the gzip-compressed data is stored as the value of this section (TODO CHECK THE FOLLOWING), although having an accurate value is only important on Windows.
+The size of the gzip-compressed data is stored as the value of this section.
 
-The number of bytes that will be decompressed is 4 * the total number of facilities (found in the  `LT_SECTION_FACNAME` section). (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
+The number of bytes that will be decompressed is 4 * the total number of facilities (found in the  `LT_SECTION_FACNAME` section).
 
 #### `LT_SECTION_ZTIME_TABLE_SIZE`
 
@@ -132,9 +136,9 @@ If this section is present and nonzero, it indicates that data in the `LT_SECTIO
 
 This section (`LT_SECTION_ZTIME_TABLE_SIZE`) is used regardless of whether the time table is 32-bit or 64-bit.
 
-The size of the gzip-compressed data is stored as the value of this section (TODO CHECK THE FOLLOWING), although having an accurate value is only important on Windows.
+The size of the gzip-compressed data is stored as the value of this section.
 
-The number of bytes that will be decompressed depends on whether the file contains a `LT_SECTION_TIME_TABLE` or `LT_SECTION_TIME_TABLE64` section (a file that contains both will cause an error and cause parsing to be aborted). In case of 32-bit time, the amount of data is 4 + 4 + 4 * `number_of_entries` bytes. In case of 64-bit time, the amount of data is 8 + 8 + 12 * `number_of_entries` bytes. (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
+The number of bytes that will be decompressed depends on whether the file contains a `LT_SECTION_TIME_TABLE` or `LT_SECTION_TIME_TABLE64` section (a file that contains both will cause an error and cause parsing to be aborted). In case of 32-bit time, the amount of data is 4 + 4 + 4 * `number_of_entries` bytes. In case of 64-bit time, the amount of data is 8 + 8 + 12 * `number_of_entries` bytes.
 
 #### `LT_SECTION_ZCHG_SIZE`
 
@@ -148,9 +152,9 @@ TODO WTF IS LINEAR LXT
 
 After decompression, the change data is treated **as if** it was placed at file offset 4.
 
-The size of the compressed data is stored as the value of this section (TODO CHECK THE FOLLOWING), although having an accurate value is only important on Windows.
+The size of the compressed data is stored as the value of this section.
 
-The number of bytes that will be decompressed is stored as the value of the `LT_SECTION_ZCHG_PREDEC_SIZE` section. (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
+The number of bytes that will be decompressed is stored as the value of the `LT_SECTION_ZCHG_PREDEC_SIZE` section.
 
 #### `LT_SECTION_ZDICTIONARY`
 
