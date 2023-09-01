@@ -204,3 +204,22 @@ On most modern platforms, this value is an IEEE 754 binary64. The manual does no
 
 This section stores a 64-bit time offset for all timestamps in this file (i.e. time 0 in the file will be displayed to a user as time `global_time_offset` (taking into account the timescale)).
 
+#### `LT_SECTION_EXCLUDE_TABLE`
+
+| Section contents      |
+| --------------------- |
+| `num_blackouts`       |
+| `start[0]`            |
+| `end[0]`              |
+| `start[1]`            |
+| `end[1]`              |
+| ...                   |
+| `start[n]`            |
+| `end[n]`              |
+
+This section stores a list of time intervals that are marked as excluded or blacked-out (e.g. by something like `$dumpoff`). Value changes inside an excluded interval will still be rendered.
+
+`num_blackouts` is a 32-bit count of entries that follow.
+
+`start` and `end` are 64-bit time values.
+
