@@ -36,13 +36,20 @@ output += struct.pack(">I", 0)
 
 #####
 
+# LT_SECTION_TIMESCALE
+timescale_off = len(output)
+output += b'\xEA'
+
+#####
+
 output += b'\x00'                                       # LT_SECTION_END
 output += struct.pack(">IB", facname_off, 3)            # LT_SECTION_FACNAME
 output += struct.pack(">IB", facname_geom_off, 4)       # LT_SECTION_FACNAME_GEOMETRY
 output += struct.pack(">IB", time_table_off, 6)         # LT_SECTION_TIME_TABLE
 output += struct.pack(">IB", sync_table_off, 2)         # LT_SECTION_SYNC_TABLE
+output += struct.pack(">IB", timescale_off, 5)          # LT_SECTION_TIMESCALE
 
 output += b'\xB4'   # trlid
 
-with open('basic.lxt', 'wb') as f:
+with open('timescale.lxt', 'wb') as f:
     f.write(output)

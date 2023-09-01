@@ -32,7 +32,7 @@ output += struct.pack(">II", 0, 100)
 
 # LT_SECTION_SYNC_TABLE
 sync_table_off = len(output)
-output += struct.pack("<I", 0)
+output += struct.pack(">I", 0)
 
 #####
 

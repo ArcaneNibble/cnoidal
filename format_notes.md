@@ -81,6 +81,8 @@ The following `tag` values are currently supported:
 
 The presence of certain section tags indicates that data in another section is compressed.
 
+TODO TEST IF GZIP DATA ISN'T ACTUALLY GZIP
+
 #### `LT_SECTION_ZFACNAME_SIZE`
 
 If this section is present and nonzero, it indicates that data in the `LT_SECTION_FACNAME` section is compressed with gzip. The data that is compressed includes everything **except** the first 8 bytes (consisting of `number_of_facilities` and `facility_name_total_memory`):
@@ -135,4 +137,66 @@ The size of the gzip-compressed data is stored as the value of this section (TOD
 The number of bytes that will be decompressed depends on whether the file contains a `LT_SECTION_TIME_TABLE` or `LT_SECTION_TIME_TABLE64` section (a file that contains both will cause an error and cause parsing to be aborted). In case of 32-bit time, the amount of data is 4 + 4 + 4 * `number_of_entries` bytes. In case of 64-bit time, the amount of data is 8 + 8 + 12 * `number_of_entries` bytes. (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
 
 #### `LT_SECTION_ZCHG_SIZE`
+
+If this section is present and nonzero, it indicates that data in the `LT_SECTION_CHG` section is compressed with either gzip or bzip2. bzip2 is detected by looking for the magic bytes 'BZ' at the beginning of the `LT_SECTION_CHG` section. If these magic bytes are not present, the data is assumed to be gzip. Everything is compressed:
+
+| Section contents              |
+| ----------------------------- |
+| gzip/bzip2 compressed data    |
+
+TODO WTF IS LINEAR LXT
+
+After decompression, the change data is treated **as if** it was placed at file offset 4.
+
+The size of the compressed data is stored as the value of this section (TODO CHECK THE FOLLOWING), although having an accurate value is only important on Windows.
+
+The number of bytes that will be decompressed is stored as the value of the `LT_SECTION_ZCHG_PREDEC_SIZE` section. (TODO CHECK THE FOLLOWING). If there are fewer bytes in the compressed stream than this, an error occurs and parsing of the entire file is aborted. If there are more bytes in the compressed stream than this, the remaining bytes are ignored.
+
+#### `LT_SECTION_ZDICTIONARY`
+
+This section is always compressed. TODO TODO TODO
+
+### Linear LXT
+
+TODO TODO TODO
+
+### Sections
+
+If a section does have documentation in the GTKWave manual, this document will only focus on information that is not explicitly documented.
+
+#### `LT_SECTION_TIMESCALE`
+
+| Section contents  |
+| ----------------- |
+| `timescale`       |
+
+This section contains a single (signed) byte representing the timescale of the file (i.e. a time value of 1 in the file represents $10^{timescale}$ seconds).
+
+Contrary to the manual, the valid range is not [-128 - 127]. Values outside of the range [-21 - 2] (i.e. 1 zeptosecond to 100 seconds) are treated as 1 nanosecond. In addition, if this section is not present, the default timescale is 1 nanosecond.
+
+#### `LT_SECTION_INITIAL_VALUE`
+
+| Section contents  |
+| ----------------- |
+| `initial_value`   |
+
+This section contains a single byte representing the initial value of all signals. The intended range of valid bytes is [0 - 8] representing `01ZXHUWL-` in order. A byte value outside of this range is also interpreted as `X`. If this section does not exist, the initial value is `X`.
+
+#### `LT_SECTION_DOUBLE_TEST`
+
+| Section contents  |
+| ----------------- |
+| `pi_constant`     |
+
+This section stores the value 3.14159 as an 8-byte double-precision floating-point value. The intention is for the value to be written in the native byte ordering of the writing software, and for reading software to swap byte ordering if necessary. Byte ordering does not need to be fully big or little endian (i.e. mixed-endian is supported), and GTKWave implements arbitrary byte permuting.
+
+On most modern platforms, this value is an IEEE 754 binary64. The manual does not specify what should happen on platforms that do not natively use such a representation for floating-point numbers. The behavior also appears to be undefined if an incorrect value is stored in this section. The behavior also appears to be undefined if floating-point values are used in the rest of the file but this section is not present. TODO TEST MORE
+
+#### `LT_SECTION_TIMEZERO`
+
+| Section contents      |
+| --------------------- |
+| `global_time_offset`  |
+
+This section stores a 64-bit time offset for all timestamps in this file (i.e. time 0 in the file will be displayed to a user as time `global_time_offset` (taking into account the timescale)).
 
