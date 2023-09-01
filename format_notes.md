@@ -202,7 +202,7 @@ On most modern platforms, this value is an IEEE 754 binary64. The manual does no
 | --------------------- |
 | `global_time_offset`  |
 
-This section stores a 64-bit time offset for all timestamps in this file (i.e. time 0 in the file will be displayed to a user as time `global_time_offset` (taking into account the timescale)).
+This section stores a (signed) 64-bit time offset that will be added to all timestamps in this file. A similar rendering effect can be achieved by changing `first_cycle` in the `LT_SECTION_TIME_TABLE`, but the semantic meaning of this section is different. The value in this section corresponds to `$timezero` in VCD files, and negative values always work.
 
 #### `LT_SECTION_EXCLUDE_TABLE`
 
@@ -222,4 +222,34 @@ This section stores a list of time intervals that are marked as excluded or blac
 `num_blackouts` is a 32-bit count of entries that follow.
 
 `start` and `end` are 64-bit time values.
+
+#### `LT_SECTION_TIME_TABLE` / `LT_SECTION_TIME_TABLE64`
+
+This section maps between file positions and time values.
+
+| Section contents              |
+| ----------------------------- |
+| `number_of_entries`           |
+| `first_cycle`                 |
+| `last_cycle`                  |
+| `position_delta[0]`           |
+| `position_delta[1]`           |
+| ...                           |
+| `position_delta[n]`           |
+| `time_delta[0]`               |
+| `time_delta[1]`               |
+| ...                           |
+| `time_delta[n]`               |
+
+`number_of_entries` is a 32-bit count of the number of delta entries that follow.
+
+`first_cycle` and `last_cycle` are either 32-bit or 64-bit depending on the section type. These store the minimum and maximum time values represented in this file. For 32-bit values, these are interpreted as unsigned. For 64-bit values, they are interpreted as signed, but it is not possible to place cursors in the GUI at negative times.
+
+`position_delta` entries are 32-bit in both cases.
+
+`time_delta` entries are 32-bit or 64-bit depending on the section type.
+
+Contrary to the text in the manual, delta values may be zero as well as positive. This is needed in order to represent values at time 0 and is visible in the example in the manual written immediately after said text.
+
+Note further that the order of the position and time information is reversed in the example written in the manual.
 
