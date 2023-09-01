@@ -225,8 +225,6 @@ This section stores a list of time intervals that are marked as excluded or blac
 
 #### `LT_SECTION_TIME_TABLE` / `LT_SECTION_TIME_TABLE64`
 
-This section maps between file positions and time values.
-
 | Section contents              |
 | ----------------------------- |
 | `number_of_entries`           |
@@ -241,6 +239,8 @@ This section maps between file positions and time values.
 | ...                           |
 | `time_delta[n]`               |
 
+This section maps between file positions and time values.
+
 `number_of_entries` is a 32-bit count of the number of delta entries that follow.
 
 `first_cycle` and `last_cycle` are either 32-bit or 64-bit depending on the section type. These store the minimum and maximum time values represented in this file. For 32-bit values, these are interpreted as unsigned. For 64-bit values, they are interpreted as signed, but it is not possible to place cursors in the GUI at negative times.
@@ -253,3 +253,28 @@ Contrary to the text in the manual, delta values may be zero as well as positive
 
 Note further that the order of the position and time information is reversed in the example written in the manual.
 
+#### `LT_SECTION_FACNAME`
+
+| Section contents              |
+| ----------------------------- |
+| `number_of_facilities`        |
+| `facility_name_total_memory`  |
+| `prefix_bytes[0]`             |
+| `name[0][len]`                |
+| `prefix_bytes[1]`             |
+| `name[1][len]`                |
+| ...                           |
+| `prefix_bytes[n]`             |
+| `name[n][len]`                |
+
+This section stores the number of signals (facilities) and their names. Names are compressed by reusing prefixes.
+
+`number_of_facilities` is a 32-bit value. This value will control the amount of data read from many other sections of the file.
+
+`facility_name_total_memory` is a 32-bit value that must be at least as large as the total amount of memory needed to store all names _after_ compressed prefixes are all decompressed. This value may be larger than required, and `lxt_write.c` will consistently overcount this value when bracket stripping is enabled. <span style="color:red">If this value is too small, GTKWave will overflow a heap-allocated buffer with data from the file.</span>
+
+Each name consists of a 16-bit `prefix_bytes` followed by a null-terminated string. To decode each name, copy `prefix_bytes` bytes from the previous name and then append the current name. If `prefix_bytes` exceeds the length of the previous name, the current name will be the same as the previous name (because a null terminator byte will be prematurely copied and inserted). If `prefix_bytes` is nonzero for the first name in the list, uninitialized memory will be read.
+
+It is unspecified what happens if duplicate names are found, but GTKWave will display only one of them.
+
+Names must be UTF-8. Invalid UTF-8 will cause GTKWave to segfault (at least on macOS).
