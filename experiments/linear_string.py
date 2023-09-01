@@ -13,15 +13,15 @@ offs = []
 
 offs.append(len(output))
 output += b'\x00'   # fac
-output += b'\x04'   # cmd -> 1
+output += b'foo\x00'
 
 offs.append(len(output))
 output += b'\x00'   # fac
-output += b'\x05'   # cmd -> Z
+output += b'barbaz\x00'
 
 offs.append(len(output))
 output += b'\x00'   # fac
-output += b'\x03'   # cmd -> 0
+output += b'quux\x00'
 
 linear_chg_sz = len(output) - 4
 
@@ -39,7 +39,7 @@ output += b'test\x00'
 
 # LT_SECTION_FACNAME_GEOMETRY
 facname_geom_off = len(output)
-output += struct.pack(">IIII", 0, 0xffffffff, 0xffffffff, 0)
+output += struct.pack(">IIII", 0, 0, 0, 4)
 
 #####
 
@@ -68,5 +68,5 @@ output += struct.pack(">IB", linear_chg_sz, 15)         # LT_SECTION_ZCHG_PREDEC
 
 output += b'\xB4'   # trlid
 
-with open('linear.lxt', 'wb') as f:
+with open('linear_string.lxt', 'wb') as f:
     f.write(output)

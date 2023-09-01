@@ -160,10 +160,6 @@ The number of bytes that will be decompressed is stored as the value of the `LT_
 
 This section is always compressed with gzip and will be explained later in this document.
 
-### Linear LXT
-
-TODO TODO TODO
-
 ### Sections
 
 If a section does have documentation in the GTKWave manual, this document will only focus on information that is not explicitly documented.
@@ -368,3 +364,34 @@ The compressed data consists of a sequence of null-terminated ASCII MVL9 strings
 
 When a dictionary entry is referenced, it is prepended (i.e. on the left/MSB) with a leading 1 bit. It is then padded to the width of the facility with 0 bits. <span style="color:red">If this exceeds the size of the facility (i.e. the length of the string in the dictionary is greater than the facility width minus 1) then memory is overwritten with '0' characters until a segfault occurs.</span> Out-of-range indices cause a nonfatal error and result in a value consisting of all 0 bits.
 
+#### `LT_SECTION_CHG`
+
+This is the main section of the file and contains value change data.
+
+However, if the LXT file is not using compression for this section, the section does not actually need to formally exist. Data will instead be processed by following the back pointers in `LT_SECTION_SYNC_TABLE` (for a normal LXT) or blindly starting from file offset 4 (for a linear LXT). This also implies that change data in an uncompressed normal LXT file need not be contiguous and can be freely dispersed throughout the file.
+
+In a compressed LXT, this section must exist, and compressed data will be read starting from this section's offset.
+
+There are two possible encodings for this section of the file, "normal" and "linear."
+
+##### Normal LXT
+
+This is the format as documented in the GTKWave manual. Each change consists of a command byte, delta offset back pointer, optional array row, and optional additional data.
+
+Bits [7:6] of the command byte must be 0.
+
+As described in the [`LT_SECTION_ZDICTIONARY`](#lt_section_zdictionary-1) section, MVL_2 commands can  optionally reference a dictionary. However, this does **not** work for doubles or strings.
+
+MVL_9 values that are out of range are treated as X.
+
+##### Linear LXT
+
+This is an alternative format. When this format is used, it is not possible to read the information for a single facility without scanning through the entire change data.
+
+In a linear LXT, the size of the change data must be encoded as the value of the `LT_SECTION_ZCHG_PREDEC_SIZE` section.
+
+Change data consists of a facility index, command byte, optional array row, and optional additional data.
+
+The facility index is a variable number of bits from 8 to 32 depending on the total number of facilities in the file.
+
+The same commands are used as in a normal LXT, but bits [7:4] must be 0.
