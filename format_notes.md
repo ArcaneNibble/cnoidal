@@ -249,7 +249,7 @@ This section maps between file positions and time values.
 
 `time_delta` entries are 32-bit or 64-bit depending on the section type.
 
-Contrary to the text in the manual, delta values may be zero as well as positive. This is needed in order to represent values at time 0 and is visible in the example in the manual written immediately after said text.
+Contrary to the text in the manual, delta values may be zero as well as positive. This is needed in order to represent values at time 0 and is visible in the example in the manual written immediately after said text requiring values to be positive.
 
 Note further that the order of the position and time information is reversed in the example written in the manual.
 
@@ -269,7 +269,7 @@ Note further that the order of the position and time information is reversed in 
 
 This section stores the number of signals (facilities) and their names. Names are compressed by reusing prefixes.
 
-`number_of_facilities` is a 32-bit value. This value will control the amount of data read from many other sections of the file.
+`number_of_facilities` is a 32-bit value. This value will also control the amount of data read from many other sections of the file.
 
 `facility_name_total_memory` is a 32-bit value that must be at least as large as the total amount of memory needed to store all names _after_ compressed prefixes are all decompressed. This value may be larger than required, and `lxt_write.c` will consistently overcount this value when bracket stripping is enabled. <span style="color:red">If this value is too small, GTKWave will overflow a heap-allocated buffer with data from the file.</span>
 
@@ -366,5 +366,5 @@ Facilities will only index into the dictionary if they are greater than `dict_wi
 
 The compressed data consists of a sequence of null-terminated ASCII MVL9 strings (i.e. consisting of the characters `01ZXHUWL-`). 
 
-When a dictionary entry is referenced, it is prepended (i.e. on the left/MSB) with a leading 1 bit. It is then padded to the width of the facility with 0 bits. <span style="color:red">If this exceeds the size of the facility (i.e. the string in the dictionary is greater than the facility width minus 1) then memory is overwritten with '0' characters until a segfault occurs.</span> Out-of-range indices cause a nonfatal error and result in a value consisting of all 0 bits.
+When a dictionary entry is referenced, it is prepended (i.e. on the left/MSB) with a leading 1 bit. It is then padded to the width of the facility with 0 bits. <span style="color:red">If this exceeds the size of the facility (i.e. the length of the string in the dictionary is greater than the facility width minus 1) then memory is overwritten with '0' characters until a segfault occurs.</span> Out-of-range indices cause a nonfatal error and result in a value consisting of all 0 bits.
 
