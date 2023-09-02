@@ -16,7 +16,7 @@ fac_names += b'test\x00'
 # geometry
 fac_geom = b''
 
-fac_geom += struct.pack(">IIII", 0, 7, 0, 0)
+fac_geom += struct.pack(">IIII", 1, 7, 0, 0)
 
 #####
 

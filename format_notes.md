@@ -465,6 +465,8 @@ Facility names are encoded in the same way as LXT files (including prefix compre
 
 Facility geometries are also encoded in the same way as LXT files, except that there are additional flags defined. Flags valid for a LXT file are also valid for LXT2. The additional flags presumably allow for specifying properties of symbols defined in HDL, but they do not actually do anything in reality.
 
+Just like in LXT files, arrays (rows > 0) are not properly supported. Unlike in LXT files, there is no way at all to encode an array row in value change data. However, also unlike in LXT files, setting rows to 1 will import the (1-item) array as if it were a scalar value.
+
 As in LXT files, it is possible to store uncompressed data instead of glib compressed data as long as it does not start with glib magic bytes (0x1F 0x8B).
 
 Alias facilities must all be listed at the end after all of the non-alias facilities (or else the non-alias facilities after the first alias facility will not have any data read).
