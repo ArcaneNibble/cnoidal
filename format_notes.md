@@ -467,7 +467,7 @@ Facility geometries are also encoded in the same way as LXT files, except that t
 
 As in LXT files, it is possible to store uncompressed data instead of glib compressed data as long as it does not start with glib magic bytes (0x1F 0x8B).
 
-TODO CHECK THIS Alias facilities must all be listed at the end after all of the non-alias facilities (or else what happens? TODO)
+Alias facilities must all be listed at the end after all of the non-alias facilities (or else the non-alias facilities after the first alias facility will not have any data read).
 
 ### Blocks
 
@@ -538,9 +538,9 @@ Map entries are either 32-bit or 64-bit bitfields, depending on the `granule_siz
 
 ### Granules
 
-TODO what is a partial granule
+Granules can either be a complete granule (encoding every "real" facility) or a partial granule (encoding a subset of up to 2048 facilities).
 
-The format of a granule is:
+The format of a complete granule is:
 
 | Granule contents              |
 | ----------------------------- |
@@ -557,11 +557,22 @@ The format of a granule is:
 | ...                           |
 | value change data n           |
 
+The format of a partial granule contains two additional fields followed by contents similar to a complete granule:
+
+| Partial granule contents      |
+| ----------------------------- |
+| `strtfac`                     |
+| `sublen`                      |
+| `num_time_table_entries`      |
+| ... other granule fields      |
+
+`sublen` is a 32-bit value containing the size in bytes of the complete granule data following the partial granule header.
+
 `num_time_table_entries` is an 8-bit value of the number of time table entries following. <span style="color:red">If it is greater than 64, a fixed-sized array in a struct is overflowed and subsequent data is corrupted.</span>
 
 Time table entries are each 64-bit values containing a time value.
 
-TODO explain how many facilities are encoded (partial)
+In a complete granule, the following sequences (map index, value change data) apply starting at facility index 0 and repeat for the total number of "real" facilities in the file. A "real" facility is supposed to include all facilities except aliases (but, if aliases are incorrectly not stored at the end, this count will be truncated at the first encounter of an alias facility). In a partial granule, the following sequences will only apply to facilities starting from index `strtfac` (32-bit value) and continue for either 2048 entries or until the total number of "real" facilities is reached, whichever is smaller.
 
 `fac_map_index_width` specifies the size in bytes of all subsequent map indices. The valid range is [1 - 4].
 
