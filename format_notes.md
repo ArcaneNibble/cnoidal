@@ -401,6 +401,8 @@ TODO TAKE A LOOK AT THE DETAILS OF POSITION ADJUSTING
 
 The key change in LXT2 files is that value changes are chunked into blocks of up to either 32 or 64 changes, called a granule. This eliminates the need for a table mapping file positions and time values. Additionally, files are generally intended to be processed in forwards order rather than starting from the end.
 
+Unlike LXT files, it is not possible to start writing out change data until the total count of facilities is known.
+
 The overall structure of an LXT2 file is as follows:
 
 | File contents                     |
@@ -608,6 +610,8 @@ For each facility, an index into the map (in `LXT2_RD_GRAN_SECT_DICT`) is stored
 
 For each facility, value change information is stored. Value change data consists of a sequence of `fac_curpos_width` byte entries. The number of items in this value change sequence is the number of 1 bits set in the map entry for this facility.
 
+TODO test first granule in a block duplicate change elimination
+
 TODO example
 
 ### Value change entries
@@ -652,3 +656,117 @@ Value change entires either consist of a special shortcut command or else are in
 For values >= 0x12, 0x12 is subtracted and the result is used as an index into the dictionary.
 
 Note that, unlike for LXT files, double values are stored in printf `%lg` format (`lxt2_write.c` uses `%.16g`) rather than as binary.
+
+
+## VZT
+
+VZT files are similar to LXT2 files with the following main changes:
+
+* Within a block, facilities that change in an identical way share their change data rather than storing duplicate information
+* Changes are always encoded explicitly. It is never necessary to know the previous value of a facility in order to determine the value at a given time. This change guarantees that it is possible to decode all VZT blocks in parallel (it is possible to encode an LXT2 file such that this is possible, but it is not guaranteed).
+* MLT_9 is no longer supported, only MLT_2 and MLT_4 (MLT_9 is theoretically still representable, but GTKWave does not implement it)
+* Miscellaneous encoding format changes (variable-size integers, endianness quirks, different compression formats)
+
+The overall structure of a VZT file is almost identical to the LXT2 structure with the following differences:
+
+`hdrid` must be 0x565A ('VZ').
+
+`version` is a 16-bit version number. As of this writing, GTKWave supports version numbers less than or equal to 1. The version number specified in the file does not appear to "gate" usage of any newer features or otherwise affect processing of the file in any way. When writing files, `vzt_write.c` always writes a version number of 1 regardless of what features are used.
+
+`granule_size` is a byte that is supposed to indicate the size of granules in this file. GTKWave only accepts values less than or equal to 32 (granules are always size 32, size 64 is not supported in VZT). However, other than needing to be less than or equal to 32, this value does not affect processing of the file in any way.
+
+Other header fields are identical to LXT2, <span style="color:red">including the buffer overflow that occurs if `longestname` is too small.</span>
+
+### Compression
+
+Multiple compression formats are supported by VZT files, and they are detected by the presence of magic bytes. The supported formats are:
+
+* gzip (0x1F 0x8B)
+* LZMA ('z' '7')
+* bzip2 (default assumption, but must contain the magic 'B' 'Z')
+
+TODO TEST COMPRESSION
+
+TODO LZMA is nonstandard
+
+Unlike LXT2, it is never possible to directly store uncompressed data. One of the supported compression mechanisms must be used.
+
+### Facility names and geometries
+
+Facility names and geometries have the same encoding as in LXT2 files. This includes:
+
+* The same numeric values for flags, including the LXT2 HDL attribute flags that are ignored.
+* The same lack of complete support for arrays.
+* The same requirement that alias facilities be listed at the end.
+
+### Blocks
+
+Blocks contain the same header as in LXT2 files. However, if `start_time` is greater than `end_time`, it indicates that the block contents use run-length-encoding for the value dictionary (the time values are then swapped back into the correct order).3
+
+The compression formats that can be used are gzip, LZMA, and bzip2. "Striped" compression is not supported.
+
+Block _contents_ are **completely different**.
+
+### Variable-size integers
+
+Some fields in block contents are encoded with a variable-size integer format almost identical to ULEB128. However, the high bit of every byte is inverted compared to ULEB128 (i.e. the MSB is **clear** on each byte except the last byte where it is set).
+
+### Block contents
+
+The format of a block is as follows:
+
+| Block contents                |
+| ----------------------------- |
+| `num_time_ticks`              |
+| time table                    |
+| `num_sections`                |
+| `num_dict_entries`            |
+| [padding]                     |
+| value dictionary              |
+| `num_bitplanes`               |
+| [padding]                     |
+| vindex table                  |
+| `num_str_entries`             |
+| string dictionary             |
+
+`num_time_ticks` is a 32-bit modified-ULEB128 value encoding the number of time value entries in the following time table. If this value is 0, no entries are stored and the time table will be treated as if it contains time steps from `start_time` to `end_time` (in the block header) incrementing by 1.
+
+If present, the time table contains 64-bit modified-ULEB128 values. The first value is an absolute time value, and all subsequent values are deltas from the previous time value.
+
+`num_sections` is a 32-bit modified-ULEB128 value encoding the number of 32-bit granules contained in each entry of the value dictionary.
+
+`num_dict_entries` is a 32-bit modified-ULEB128 value encoding the number of entries in the value dictionary.
+
+The value dictionary contains patterns of signal values across the time interval of this block. This section can optionally be RLE-compressed and will be explained further later.
+
+`num_bitplanes` is a 32-bit modified-ULEB128 value encoding 1 less than the number of "bit planes" present in the vindex table. This is used to encode MLT_4 values. Although this can be an arbitrary value, GTKWave does not implement any way for bit planes past 2 to be accessed.
+
+The vindex table contains 32-bit indices into the value dictionary for each bit of each facility in the file. This data is **little-endian**. This will be explained further below.
+
+`num_str_entries` is a 32-bit modified-ULEB128 value encoding the number of entries in the string dictionary.
+
+The string dictionary is a sequence of null-terminated strings. Note that in VZT files this is _only_ used for strings (and not doubles, MLT_9, etc.).
+
+### Value changes
+
+Each facility in the VZT file is mapped to one or more sequential entries (per bit plane) in the vindex table. The number of entries is equal to the length of the facility (for vectors) or else is 32 for integers/strings or 64 for floating-point values. In other words, all multi-bit signals are broken up and treated as a block of 1-bit signals. TODO MSB LSB ORDERING
+
+If there are multiple bit planes, the bit 0 (the LSB) vindex entries for all facilities is stored, followed by the bit 1 vindex entries, and so on. Note that the number of bit planes is a global (or at least per-block) setting and not a per-signal setting, so using more than 1 bit plane expands the required storage for *all* signals. In practice, this functionality is only used to encode MLT_4 signals.
+
+The vindex table thus contains (total number of signal bits in the file) * (`num_bitplanes`) entries.
+
+The vindex table contains indices into the value dictionary. The value dictionary consists of `num_dict_entries` entries each containing `num_sections` granules (so each vindex skips by `num_sections` 32-bit words in the value dictionary). This data is **little-endian**. 
+
+Each entry in the value dictionary encodes bits over time, starting from the LSB of the first 32-bit word up to the MSB of the first 32-bit word, then continuing with the LSB of the second 32-bit word, and so on up to `num_time_ticks` time steps. Each of these time steps then occurs at the time specified in the time table. (TODO CHECK ORDERING)
+
+If two signals (or two bits inside one vector signal, or even the separate bit plane bits of a MLT_4 signal) have the exact same changes throughout a block, then they can share value dictionary entries. Each vindex table entry would contain the same index into the value dictionary.
+
+TODO GIVE AN EXAMPLE
+
+TODO STRING AND DOUBLE ENCODING
+
+### RLE compression
+
+The value dictionary can optionally be RLE compressed. When RLE compression is used, contiguous runs of 1 or 0 bits are encoded with a length (32-bit modified-ULEB128 encoding). The decoder starts outputting 1 bits, and the bit being output is toggled after every run (i.e. a run of 1s, then a run of 0s, then a run of 1s, etc.). A run with length 0 can be used invert the future bit to be output (which is only really useful at the beginning in order to start with 0 bits). The RLE decoder consumes runs until the entire dictionary is filled.
+
+TODO GIVE AN EXAMPLE
