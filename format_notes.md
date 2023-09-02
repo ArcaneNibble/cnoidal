@@ -493,7 +493,29 @@ There are two formats of blocks, gzip and "striped." The type of blocks is detec
 
 A gzip block consists of a single gzip stream.
 
-TODO what is striped?
+A striped block consists of a sequence of multiple stripe headers followed by what is supposed to be a gzip stream. However, the gzip header and footer will be completely ignored and only the core DEFLATE data will be read.
+
+| <!---->                       |
+| ----------------------------- |
+| stripe 0 compressed size      |
+| stripe 0 uncompressed size    |
+| stripe 0 `iter`               |
+| stripe 0 gzip data            |
+| stripe 1 compressed size      |
+| stripe 1 uncompressed size    |
+| stripe 1 `iter`               |
+| stripe 1 gzip data            |
+| ...                           |
+| stripe n compressed size      |
+| stripe n uncompressed size    |
+| stripe n `iter`               |
+| stripe n gzip data            |
+
+The purpose of a striped block is supposed to be allowing for a subset of facilities to be read without having to decompress the entire block. In order to properly allow for this, it must be used with `LXT2_RD_GRAN_SECT_TIME_PARTIAL` described below. However, GTKWave will accept "pointless" use of this format.
+
+`iter` is a 32-bit value. When it is 0xffffffff, the stripe will be unconditionally decompressed, and the stripe must be the last one. Otherwise, the stripe will only be decompressed if the `iter` / 2048 group of facilities is marked for processing.
+
+When used properly, facilities will be divided up into groups of up to 2048. The changes for each group will be encoded in a `LXT2_RD_GRAN_SECT_TIME_PARTIAL` section, and each such section will be compressed into one stripe. The `iter` value of this stripe will be set to the first facility index encoded within it. The final section, the shared `LXT2_RD_GRAN_SECT_DICT`, will also be compressed into a stripe, and `iter` will be set to 0xFFFFFFFF. This allows for skipping through blocks of 2048 facilities at a time, decompressing only those containing values of interest.
 
 Note that it is not possible to store raw uncompressed data in this part of the file.
 
