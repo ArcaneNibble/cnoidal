@@ -1,4 +1,4 @@
 /target
 /Cargo.lock
 
-/experiments/*.lxt
+/experiments/lxt/*.lxt
