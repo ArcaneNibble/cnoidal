@@ -432,7 +432,7 @@ The overall structure of an LXT2 file is as follows:
 
 `numfacbytes` is a 32-bit value that presumably should contain the total amount of memory needed to store all names _after_ compressed prefixes are all decompressed. However, GTKWave ignores this value. `lxt2_write.c` will consistently overcount this value (in a different way from `lxt_write.c`).
 
-`longestname` is a 32-bit value that must be at least as long as the longest facility name plus 1. <span style="color:red">If this value is too small, GTKWave will overflow a heap-allocated buffer with data from the file. TODO CHECK THIS</span>
+`longestname` is a 32-bit value that must be at least as long as the longest facility name. <span style="color:red">If this value is too small, GTKWave will overflow a heap-allocated buffer with data from the file.</span>
 
 `zfacnamesize` is a 32-bit value containing the size of the gzip compressed facility names.
 
@@ -465,6 +465,8 @@ Facility names are encoded in the same way as LXT files (including prefix compre
 
 Facility geometries are also encoded in the same way as LXT files, except that there are additional flags defined. Flags valid for a LXT file are also valid for LXT2. The additional flags presumably allow for specifying properties of symbols defined in HDL, but they do not actually do anything in reality.
 
+As in LXT files, it is possible to store uncompressed data instead of glib compressed data as long as it does not start with glib magic bytes (0x1F 0x8B).
+
 TODO CHECK THIS Alias facilities must all be listed at the end after all of the non-alias facilities (or else what happens? TODO)
 
 ### Blocks
@@ -492,6 +494,8 @@ There are two formats of blocks, gzip and "striped." The type of blocks is detec
 A gzip block consists of a single gzip stream.
 
 TODO what is striped?
+
+Note that it is not possible to store raw uncompressed data in this part of the file.
 
 After decompression, **block** data is divided into **sections** prefixed with a type byte. The following type bytes are valid:
 
@@ -594,8 +598,6 @@ Value change entires either consist of a special shortcut command or else are in
 | LXT2_RD_ENC_Z         | 0x10  |
 | LXT2_RD_ENC_BLACKOUT  | 0x11  |
 
-TODO TEST ALL OF THESE
-
 `LXT2_RD_ENC_0/1/X/Z` sets the facility value to all 0/1/X/Z.
 
 `LXT2_RD_ENC_INV` inverts all of the bits of the facility.
@@ -608,8 +610,8 @@ TODO TEST ALL OF THESE
 
 `LXT2_RD_ENC_SUB*` performs an integer subtraction by the specified constant.
 
-`LXT2_RD_ENC_BLACKOUT` TODO
+`LXT2_RD_ENC_BLACKOUT` seems like it is supposed to mark when a facility is not being dumped, but it does not seem to work properly.
 
 For values >= 0x12, 0x12 is subtracted and the result is used as an index into the dictionary.
 
-Note that, unlike for LXT files, double values are stored as TODO rather than as binary.
+Note that, unlike for LXT files, double values are stored in printf `%lg` format (`lxt2_write.c` uses `%.16g`) rather than as binary.
