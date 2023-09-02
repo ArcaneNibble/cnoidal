@@ -148,8 +148,6 @@ If this section is present and nonzero, it indicates that data in the `LT_SECTIO
 | ----------------------------- |
 | gzip/bzip2 compressed data    |
 
-TODO WTF IS LINEAR LXT
-
 After decompression, the change data is treated **as if** it was placed at file offset 4.
 
 The size of the compressed data is stored as the value of this section.
@@ -392,6 +390,226 @@ In a linear LXT, the size of the change data must be encoded as the value of the
 
 Change data consists of a facility index, command byte, optional array row, and optional additional data.
 
-The facility index is a variable number of bits from 8 to 32 depending on the total number of facilities in the file.
+The facility index is a variable number of bits from 8 to 32 depending on the total number of facilities in the file. An out-of-range value will cause an error and parsing to be aborted.
 
 The same commands are used as in a normal LXT, but bits [7:4] must be 0.
+
+TODO TAKE A LOOK AT THE DETAILS OF POSITION ADJUSTING
+
+
+## LXT2
+
+The key change in LXT2 files is that value changes are chunked into blocks of either 32 or 64 changes, called a granule. This eliminates the need for a table mapping file positions and time values. Additionally, files are generally intended to be processed in forwards order rather than starting from the end.
+
+The overall structure of an LXT2 file is as follows:
+
+| File contents                     |
+| --------------------------------- |
+| `hdrid`                           |
+| `version`                         |
+| `granule_size`                    |
+| `numfacs`                         |
+| optional expansion bytes          |
+| `numfacbytes`                     |
+| `longestname`                     |
+| `zfacnamesize`                    |
+| `zfacname_predec_size`            |
+| `zfacgeometrysize`                |
+| `timescale`                       |
+| gzip compressed facility names    |
+| gzip compressed facility geometry |
+| block data                        |
+
+### Header fields
+
+`hdrid` is a 16-bit value which must be 0x1380.
+
+`version` is a 16-bit version number. As of this writing, GTKWave supports version numbers less than or equal to 1. The version number specified in the file does not appear to "gate" usage of any newer features or otherwise affect processing of the file in any way. When writing files, `lxt2_write.c` always writes a version number of 1 regardless of what features are used.
+
+`granule_size` is a byte that is supposed to indicate the size of granules in this file. GTKWave only accepts values less than or equal to 64. If this value is specified as 64, granules will contain 64 changes. If this value is any other number, it will be interpreted as granules containing 32 changes.
+
+`numfacs` is a 32-bit value containing the total number of facilities in this file. If it is 0, it indicates the presence of expansion bytes.
+
+`numfacbytes` is a 32-bit value that presumably should contain the total amount of memory needed to store all names _after_ compressed prefixes are all decompressed. However, GTKWave ignores this value. `lxt2_write.c` will consistently overcount this value (in a different way from `lxt_write.c`).
+
+`longestname` is a 32-bit value that must be at least as long as the longest facility name plus 1. <span style="color:red">If this value is too small, GTKWave will overflow a heap-allocated buffer with data from the file. TODO CHECK THIS</span>
+
+`zfacnamesize` is a 32-bit value containing the size of the gzip compressed facility names.
+
+`zfacname_predec_size` is a 32-bit value containing the size of the facility name data (which is still prefix compressed) to be read from the gzip stream.
+
+`zfacgeometrysize` is a 32-bit value containing the size of the gzip compressed facility geometry.
+
+`timescale` is a signed byte containing the timescale. This is in the same format as inthe `LT_SECTION_TIMESCALE` section of an LXT file (including the range limitation).
+
+### Header expansion bytes
+
+If the `numfacs` field is zero, the header expansion bytes contain the following:
+
+| Field contents                    |
+| --------------------------------- |
+| `num_expansion_bytes`             |
+| `numfacs` (actual)                |
+| `timezero`                        |
+| possible future bytes             |
+
+`num_expansion_bytes` is a 32-bit value containing the number of expansion bytes, where the count starts from after this second (actual) `numfacs` field. If this value is less than 8, expansion information is ignored.
+
+`numfacs` is a 32-bit value containing the actual number of facilities.
+
+`timezero` contains a global time offset as in the `LT_SECTION_TIMEZERO` section of LXT files.
+
+### Facility names and geometries
+
+Facility names are encoded in the same way as LXT files (including prefix compression).
+
+Facility geometries are also encoded in the same way as LXT files, except that there are additional flags defined. Flags valid for a LXT file are also valid for LXT2. The additional flags presumably allow for specifying properties of symbols defined in HDL, but they do not actually do anything in reality.
+
+TODO CHECK THIS Alias facilities must all be listed at the end after all of the non-alias facilities (or else what happens? TODO)
+
+### Blocks
+
+Each block consists of a header followed by compressed data:
+
+| Block contents        |
+| --------------------- |
+| `uncompressed_size`   |
+| `compressed_size`     |
+| `start_time`          |
+| `end_time`            |
+| block data            |
+
+`uncompressed_size` is a 32-bit value containing the size of the block data after decompression.
+
+`compressed_size` is a 32-bit value containing the size of the compressed block data.
+
+`start_time` and `end_time` are 64-bit time values that specify the range of time values contained within this block.
+
+Blocks that have zero `uncompressed_size`, `compressed_size`, and `end_time` are skipped.
+
+There are two formats of blocks, gzip and "striped." The type of blocks is detected by looking for a gzip magic number (0x1F 0x8B).
+
+A gzip block consists of a single gzip stream.
+
+TODO what is striped?
+
+After decompression, **block** data is divided into **sections** prefixed with a type byte. The following type bytes are valid:
+
+| Type                              | Byte  |
+| --------------------------------- | ----- |
+| LXT2_RD_GRAN_SECT_TIME            | 0     |
+| LXT2_RD_GRAN_SECT_DICT            | 1     |
+| LXT2_RD_GRAN_SECT_TIME_PARTIAL    | 2     |
+
+`LXT2_RD_GRAN_SECT_TIME` and `LXT2_RD_GRAN_SECT_TIME_PARTIAL` are used to define **granules** while `LXT2_RD_GRAN_SECT_DICT` is used to define a map and dictionary shared by all granules inside a block.
+
+Parsing will stop at the first unrecognized type byte. `LXT2_RD_GRAN_SECT_DICT` must be at the very end of the block.
+
+### `LXT2_RD_GRAN_SECT_DICT`
+
+This section contains a dictionary and map shared by all granules in a block. The format of this section is:
+
+| Section contents              |
+| ----------------------------- |
+| `LXT2_RD_GRAN_SECT_DICT`      |
+| dictionary string 0           |
+| ...                           |
+| dictionary string n           |
+| map entry 0                   |
+| ...                           |
+| map entry n                   |
+| `num_dict_entries`            |
+| `dict_size`                   |
+| `num_map_entries`             |
+
+Dictionary strings are null-terminated strings. There are `num_dict_entries` entries.
+
+Map entries are either 32-bit or 64-bit bitfields, depending on the `granule_size` of the file. There are `num_map_entries` entries.
+
+`num_dict_entries` is a 32-bit value containing the number of dictionary entries.
+
+`dict_size` is a 32-bit value containing the total size of the dictionary in bytes. If the dictionary does not actually match this size (e.g. if there is junk data after the last string), an error is raised and parsing is aborted.
+
+`num_map_entries` is a 32-bit value containing the number of map entries.
+
+### Granules
+
+TODO what is a partial granule
+
+The format of a granule is:
+
+| Granule contents              |
+| ----------------------------- |
+| `num_time_table_entries`      |
+| time table 0                  |
+| ...                           |
+| time table n                  |
+| `fac_map_index_width`         |
+| map index 0                   |
+| ...                           |
+| map index n                   |
+| `fac_curpos_width`            |
+| value change data 0           |
+| ...                           |
+| value change data n           |
+
+`num_time_table_entries` is an 8-bit value of the number of time table entries following. <span style="color:red">If it is greater than 64, a fixed-sized array in a struct is overflowed and subsequent data is corrupted.</span>
+
+Time table entries are each 64-bit values containing a time value.
+
+TODO explain how many facilities are encoded (partial)
+
+`fac_map_index_width` specifies the size in bytes of all subsequent map indices. The valid range is [1 - 4].
+
+For each facility, an index into the map (in `LXT2_RD_GRAN_SECT_DICT`) is stored.
+
+`fac_curpos_width` specifies the size in bytes of subsequent value change entries. The valid range is [1 - 4].
+
+For each facility, value change information is stored. Value change data consists of a sequence of `fac_curpos_width` byte entries. The number of items in this value change sequence is the number of 1 bits set in the map entry for this facility.
+
+TODO example
+
+### Value change entries
+
+Value change entires either consist of a special shortcut command or else are indices into the dictionary (in `LXT2_RD_GRAN_SECT_DICT`). The following shortcut commands exist:
+
+| Command               | Value |
+| --------------------- | ----- |
+| LXT2_RD_ENC_0         | 0x0   |
+| LXT2_RD_ENC_1         | 0x1   |
+| LXT2_RD_ENC_INV       | 0x2   |
+| LXT2_RD_ENC_LSH0      | 0x3   |
+| LXT2_RD_ENC_LSH1      | 0x4   |
+| LXT2_RD_ENC_RSH0      | 0x5   |
+| LXT2_RD_ENC_RSH1      | 0x6   |
+| LXT2_RD_ENC_ADD1      | 0x7   |
+| LXT2_RD_ENC_ADD2      | 0x8   |
+| LXT2_RD_ENC_ADD3      | 0x9   |
+| LXT2_RD_ENC_ADD4      | 0xa   |
+| LXT2_RD_ENC_SUB1      | 0xb   |
+| LXT2_RD_ENC_SUB2      | 0xc   |
+| LXT2_RD_ENC_SUB3      | 0xd   |
+| LXT2_RD_ENC_SUB4      | 0xe   |
+| LXT2_RD_ENC_X         | 0xf   |
+| LXT2_RD_ENC_Z         | 0x10  |
+| LXT2_RD_ENC_BLACKOUT  | 0x11  |
+
+TODO TEST ALL OF THESE
+
+`LXT2_RD_ENC_0/1/X/Z` sets the facility value to all 0/1/X/Z.
+
+`LXT2_RD_ENC_INV` inverts all of the bits of the facility.
+
+`LXT2_RD_ENC_LSH0/1` performs a left shift and shifts in a 0/1 bit.
+
+`LXT2_RD_ENC_RSH0/1` performs a right shift and shifts in a 0/1 bit.
+
+`LXT2_RD_ENC_ADD*` performs an integer addition by the specified constant.
+
+`LXT2_RD_ENC_SUB*` performs an integer subtraction by the specified constant.
+
+`LXT2_RD_ENC_BLACKOUT` TODO
+
+For values >= 0x12, 0x12 is subtracted and the result is used as an index into the dictionary.
+
+Note that, unlike for LXT files, double values are stored as TODO rather than as binary.
