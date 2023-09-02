@@ -485,7 +485,7 @@ Each block consists of a header followed by compressed data:
 
 `start_time` and `end_time` are 64-bit time values that specify the range of time values contained within this block.
 
-Blocks that have zero `uncompressed_size`, `compressed_size`, and `end_time` are skipped.
+Blocks that have zero `uncompressed_size`, `compressed_size`, or `end_time` are skipped.
 
 There are two formats of blocks, gzip and "striped." The type of blocks is detected by looking for a gzip magic number (0x1F 0x8B).
 
