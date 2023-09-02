@@ -399,7 +399,7 @@ TODO TAKE A LOOK AT THE DETAILS OF POSITION ADJUSTING
 
 ## LXT2
 
-The key change in LXT2 files is that value changes are chunked into blocks of either 32 or 64 changes, called a granule. This eliminates the need for a table mapping file positions and time values. Additionally, files are generally intended to be processed in forwards order rather than starting from the end.
+The key change in LXT2 files is that value changes are chunked into blocks of up to either 32 or 64 changes, called a granule. This eliminates the need for a table mapping file positions and time values. Additionally, files are generally intended to be processed in forwards order rather than starting from the end.
 
 The overall structure of an LXT2 file is as follows:
 
@@ -426,7 +426,7 @@ The overall structure of an LXT2 file is as follows:
 
 `version` is a 16-bit version number. As of this writing, GTKWave supports version numbers less than or equal to 1. The version number specified in the file does not appear to "gate" usage of any newer features or otherwise affect processing of the file in any way. When writing files, `lxt2_write.c` always writes a version number of 1 regardless of what features are used.
 
-`granule_size` is a byte that is supposed to indicate the size of granules in this file. GTKWave only accepts values less than or equal to 64. If this value is specified as 64, granules will contain 64 changes. If this value is any other number, it will be interpreted as granules containing 32 changes.
+`granule_size` is a byte that is supposed to indicate the size of granules in this file. GTKWave only accepts values less than or equal to 64. If this value is specified as 64, granules will contain 64 changes. If this value is any other number, it will be interpreted as granules of size 32.
 
 `numfacs` is a 32-bit value containing the total number of facilities in this file. If it is 0, it indicates the presence of expansion bytes.
 
@@ -440,7 +440,9 @@ The overall structure of an LXT2 file is as follows:
 
 `zfacgeometrysize` is a 32-bit value containing the size of the gzip compressed facility geometry.
 
-`timescale` is a signed byte containing the timescale. This is in the same format as inthe `LT_SECTION_TIMESCALE` section of an LXT file (including the range limitation).
+Unlike in LXT files, LXT2 files need to contain correct compressed sizes on all platforms, as that information is used to seek through the file.
+
+`timescale` is a signed byte containing the timescale. This is in the same format as in the `LT_SECTION_TIMESCALE` section of an LXT file (including the range limitation).
 
 ### Header expansion bytes
 
@@ -463,7 +465,7 @@ If the `numfacs` field is zero, the header expansion bytes contain the following
 
 Facility names are encoded in the same way as LXT files (including prefix compression).
 
-Facility geometries are also encoded in the same way as LXT files, except that there are additional flags defined. Flags valid for a LXT file are also valid for LXT2. The additional flags presumably allow for specifying properties of symbols defined in HDL, but they do not actually do anything in reality.
+Facility geometries are also encoded in the same way as LXT files, except that there are additional flags defined. Flags valid for a LXT file are also valid for LXT2 with the same numeric values. The additional flags presumably allow for specifying properties of symbols defined in HDL, but they do not actually do anything in reality.
 
 Just like in LXT files, arrays (rows > 0) are not properly supported. Unlike in LXT files, there is no way at all to encode an array row in value change data. However, also unlike in LXT files, setting rows to 1 will import the (1-item) array as if it were a scalar value.
 
@@ -600,7 +602,7 @@ In a complete granule, the following sequences (map index, value change data) ap
 
 `fac_map_index_width` specifies the size in bytes of all subsequent map indices. The valid range is [1 - 4].
 
-For each facility, an index into the map (in `LXT2_RD_GRAN_SECT_DICT`) is stored.
+For each facility, an index into the map (in `LXT2_RD_GRAN_SECT_DICT`) is stored. The bits that are set in the map bitfield value indicate that this facility has a value change at that particular time. The bit index of the set bits index into the time table to get the actual time values of the changes.
 
 `fac_curpos_width` specifies the size in bytes of subsequent value change entries. The valid range is [1 - 4].
 
