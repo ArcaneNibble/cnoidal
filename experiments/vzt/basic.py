@@ -63,7 +63,7 @@ def varint(x):
 block_data = b''
 
 block_data += varint(4)                 # num_time_ticks
-block_data += varint(0)
+block_data += varint(10)
 block_data += varint(5)
 block_data += varint(10)
 block_data += varint(15)
@@ -76,7 +76,7 @@ if len(block_data) % 4:
 # waveforms here
 block_data += struct.pack("<I", 0b0101)
 
-block_data += varint(0)                 # num_bitplanes
+block_data += b'\x00'                   # num_bitplanes
 if len(block_data) % 4:
     block_data += b'\xaa' * (4 - (len(block_data) % 4))
 # vindex table here

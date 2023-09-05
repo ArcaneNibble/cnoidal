@@ -739,7 +739,7 @@ If present, the time table contains 64-bit modified-ULEB128 values. The first va
 
 The value dictionary contains patterns of signal values across the time interval of this block. This section can optionally be RLE-compressed and will be explained further later.
 
-`num_bitplanes` is a 32-bit modified-ULEB128 value encoding 1 less than the number of "bit planes" present in the vindex table. This is used to encode MLT_4 values. Although this can be an arbitrary value, GTKWave does not implement any way for bit planes past 2 to be accessed.
+`num_bitplanes` is a byte value encoding 1 less than the number of "bit planes" present in the vindex table. This is used to encode MLT_4 values. Although this can be an arbitrary value, GTKWave does not implement any way for bit planes past 2 to be accessed.
 
 The vindex table contains 32-bit indices into the value dictionary for each bit of each facility in the file. This data is **little-endian**. This will be explained further below.
 
@@ -766,8 +766,6 @@ If two signals (or two bits inside one vector signal, or even the separate bit p
 TODO GIVE AN EXAMPLE
 
 TODO STRING AND DOUBLE ENCODING
-
-If a value change is not encoded for time 0, something weird seems to happen (TODO what is this?)
 
 ### RLE compression
 
