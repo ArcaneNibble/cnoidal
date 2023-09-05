@@ -747,6 +747,8 @@ The vindex table contains 32-bit indices into the value dictionary for each bit 
 
 The string dictionary is a sequence of null-terminated strings. Note that in VZT files this is _only_ used for strings (and not doubles, MLT_9, etc.).
 
+Padding aligns the data to a multiple of 4 bytes.
+
 ### Value changes
 
 Each facility in the VZT file is mapped to one or more sequential entries (per bit plane) in the vindex table. The number of entries is equal to the length of the facility (for vectors) or else is 32 for integers/strings or 64 for floating-point values. In other words, all multi-bit signals are broken up and treated as a block of 1-bit signals. TODO MSB LSB ORDERING
@@ -755,7 +757,7 @@ If there are multiple bit planes, the bit 0 (the LSB) vindex entries for all fac
 
 The vindex table thus contains (total number of signal bits in the file) * (`num_bitplanes`) entries.
 
-The vindex table contains indices into the value dictionary. The value dictionary consists of `num_dict_entries` entries each containing `num_sections` granules (so each vindex skips by `num_sections` 32-bit words in the value dictionary). This data is **little-endian**. 
+The vindex table contains indices into the value dictionary. The value dictionary consists of `num_dict_entries` entries each containing `num_sections` granules (so each vindex skips by `num_sections` 32-bit words in the value dictionary). This data is **little-endian**.
 
 Each entry in the value dictionary encodes bits over time, starting from the LSB of the first 32-bit word up to the MSB of the first 32-bit word, then continuing with the LSB of the second 32-bit word, and so on up to `num_time_ticks` time steps. Each of these time steps then occurs at the time specified in the time table. (TODO CHECK ORDERING)
 
@@ -764,6 +766,8 @@ If two signals (or two bits inside one vector signal, or even the separate bit p
 TODO GIVE AN EXAMPLE
 
 TODO STRING AND DOUBLE ENCODING
+
+If a value change is not encoded for time 0, something weird seems to happen (TODO what is this?)
 
 ### RLE compression
 
