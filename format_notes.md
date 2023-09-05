@@ -763,7 +763,7 @@ Padding aligns the data to a multiple of 4 bytes.
 
 ### Value changes
 
-Each facility in the VZT file is mapped to one or more sequential entries (per bit plane) in the vindex table. The number of entries is equal to the length of the facility (for vectors) or else is 32 for integers/strings or 64 for floating-point values. In other words, all multi-bit signals are broken up and treated as a block of 1-bit signals. TODO MSB LSB ORDERING
+Each facility in the VZT file is mapped to one or more sequential entries (per bit plane) in the vindex table. The number of entries is equal to the length of the facility (for vectors) or else is 32 for integers/strings or 64 for floating-point values. In other words, all multi-bit signals are broken up and treated as a block of 1-bit signals. The bits are ordered from MSB to LSB first.
 
 If there are multiple bit planes, the bit 0 (the LSB) vindex entries for all facilities is stored, followed by the bit 1 vindex entries, and so on. Note that the number of bit planes is a global (or at least per-block) setting and not a per-signal setting, so using more than 1 bit plane expands the required storage for *all* signals. In practice, this functionality is only used to encode MLT_4 signals.
 
@@ -773,13 +773,15 @@ The vindex table contains indices into the value dictionary. The value dictionar
 
 <span style="color:red">An out-of-bounds vindex table entry causes invalid memory to be accessed.</span>
 
-Each entry in the value dictionary encodes bits over time, starting from the LSB of the first 32-bit word up to the MSB of the first 32-bit word, then continuing with the LSB of the second 32-bit word, and so on up to `num_time_ticks` time steps. Each of these time steps then occurs at the time specified in the time table. (TODO CHECK ORDERING)
+Each entry in the value dictionary encodes bits over time, starting from the LSB of the first 32-bit word up to the MSB of the first 32-bit word, then continuing with the LSB of the second 32-bit word, and so on up to `num_time_ticks` time steps. Each of these time steps then occurs at the time specified in the time table.
 
 If two signals (or two bits inside one vector signal, or even the separate bit plane bits of a MLT_4 signal) have the exact same changes throughout a block, then they can share value dictionary entries. Each vindex table entry would contain the same index into the value dictionary.
 
-TODO GIVE AN EXAMPLE
+Double values are encoded as a 64-bit vector (i.e. a block of 64 contiguous entries in the vindex table) storing IEEE binary64 values.
 
-TODO STRING AND DOUBLE ENCODING
+String values are encoded as a 32-bit vector (i.e. a block of 32 contiguous entries in the vindex table) storing an index into the string dictionary. <span style="color:red">TODO CHECK ME An out-of-bounds index causes invalid memory to be accessed.</span>
+
+TODO GIVE AN EXAMPLE
 
 ### RLE compression
 
