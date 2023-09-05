@@ -713,7 +713,7 @@ Facility names and geometries have the same encoding as in LXT2 files. This incl
 
 ### Blocks
 
-Blocks contain the same header as in LXT2 files. However, if `start_time` is greater than `end_time`, it indicates that the block contents use run-length-encoding for the value dictionary (the time values are then swapped back into the correct order).3
+Blocks contain the same header as in LXT2 files. However, if `start_time` is greater than `end_time`, it indicates that the block contents use run-length-encoding for the value dictionary (the time values are then swapped back into the correct order).
 
 The compression formats that can be used are gzip, LZMA, and bzip2. "Striped" compression is not supported.
 
@@ -785,6 +785,10 @@ TODO GIVE AN EXAMPLE
 
 ### RLE compression
 
-The value dictionary can optionally be RLE compressed. When RLE compression is used, contiguous runs of 1 or 0 bits are encoded with a length (32-bit modified-ULEB128 encoding). The decoder starts outputting 1 bits, and the bit being output is toggled after every run (i.e. a run of 1s, then a run of 0s, then a run of 1s, etc.). A run with length 0 can be used invert the future bit to be output (which is only really useful at the beginning in order to start with 0 bits). The RLE decoder consumes runs until the entire dictionary is filled.
+The value dictionary can optionally be RLE compressed. When RLE compression is used, contiguous runs of 1 or 0 bits are encoded with a length (32-bit modified-ULEB128 encoding). The decoder starts outputting 0 bits, and the bit being output is toggled after every run (i.e. a run of 0s, then a run of 1s, then a run of 0s, etc.). A run with length 0 can be used invert the future bit to be output (which is only really useful at the beginning in order to start with 1 bits).
+
+Each waveform is RLE-compressed separately and compression does not straddle across multiple waveforms.
+
+The RLE decoder consumes runs until the appropriate number of 32-bit granules has been generated. This process is then repeated until the correct number of waveforms has been generated. There are no "end of data" markers.
 
 TODO GIVE AN EXAMPLE
