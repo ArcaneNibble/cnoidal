@@ -685,11 +685,23 @@ Multiple compression formats are supported by VZT files, and they are detected b
 * LZMA ('z' '7')
 * bzip2 (default assumption, but must contain the magic 'B' 'Z')
 
-TODO TEST COMPRESSION
+LZMA does not use a standard container format but instead uses a custom one. This container format allows mixing LZMA-compressed and uncompressed chunks. The container uses the [variable-sized integers](#variable-size-integers) described below, and consists of repeated blocks of:
 
-TODO LZMA is nonstandard
+| <!---->   |
+| --------- |
+| `dstlen`  |
+| `srclen`  |
+| data      |
 
-Unlike LXT2, it is never possible to directly store uncompressed data. One of the supported compression mechanisms must be used.
+The end of the stream is marked by a `dstlen` of 0 (and `srclen` and data are not read).
+
+If `srclen` is zero, the chunk contains `dstlen` uncompressed bytes. Otherwise, the chunk nominally contains `srclen` bytes which decompresses to `dstlen` bytes (.lzma/LZMA_ALONE format). However, an oversized `dstlen` is ignored (which is different from most other compressed data where a short read is a fatal error).
+
+`dstlen` is also used to compute the size of temporary buffers to use while decompressing (reallocating every time a larger `dstlen` is encountered), and <span style="color:red">if `srclen` ever exceeds this buffer size then a heap overflow occurs.</span>
+
+<span style="color:red">TODO CHECK ME Unlike in the contents of data blocks, if a variable-sized integer happens to exceed 16 bytes, an array on the stack is overflowed.</span>
+
+Unlike LXT2, it is never possible to _directly_ store uncompressed data. One of the supported compression mechanisms must be used. However, uncompressed data can be stored inside the custom LZMA container.
 
 ### Facility names and geometries
 
@@ -739,7 +751,7 @@ If present, the time table contains 64-bit modified-ULEB128 values. The first va
 
 The value dictionary contains patterns of signal values across the time interval of this block. This section can optionally be RLE-compressed and will be explained further later.
 
-`num_bitplanes` is a byte value encoding 1 less than the number of "bit planes" present in the vindex table. This is used to encode MLT_4 values. Although this can be an arbitrary value, GTKWave does not implement any way for bit planes past 2 to be accessed.
+`num_bitplanes` is a byte value encoding 1 less than the number of "bit planes" present in the vindex table. This is used to encode MLT_4 values. Although this can be an arbitrary value, GTKWave does not implement any way for bit planes past 2 to be accessed. **NOTE** that this one field is _not_ a variable-sized integer.
 
 The vindex table contains 32-bit indices into the value dictionary for each bit of each facility in the file. This data is **little-endian**. This will be explained further below.
 
@@ -758,6 +770,8 @@ If there are multiple bit planes, the bit 0 (the LSB) vindex entries for all fac
 The vindex table thus contains (total number of signal bits in the file) * (`num_bitplanes`) entries.
 
 The vindex table contains indices into the value dictionary. The value dictionary consists of `num_dict_entries` entries each containing `num_sections` granules (so each vindex skips by `num_sections` 32-bit words in the value dictionary). This data is **little-endian**.
+
+<span style="color:red">An out-of-bounds vindex table entry causes invalid memory to be accessed.</span>
 
 Each entry in the value dictionary encodes bits over time, starting from the LSB of the first 32-bit word up to the MSB of the first 32-bit word, then continuing with the LSB of the second 32-bit word, and so on up to `num_time_ticks` time steps. Each of these time steps then occurs at the time specified in the time table. (TODO CHECK ORDERING)
 
