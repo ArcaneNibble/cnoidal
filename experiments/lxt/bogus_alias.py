@@ -19,7 +19,7 @@ output += b'test\x00'
 
 # LT_SECTION_FACNAME_GEOMETRY
 facname_geom_off = len(output)
-output += struct.pack(">IIII", 0, 7, 0, 0)
+output += struct.pack(">IIII", 0xdeadbef, 0xffffffff, 0xffffffff, 8)
 
 #####
 
@@ -44,5 +44,5 @@ output += struct.pack(">IB", sync_table_off, 2)         # LT_SECTION_SYNC_TABLE
 
 output += b'\xB4'   # trlid
 
-with open('facgeom.lxt', 'wb') as f:
+with open('bogus_alias.lxt', 'wb') as f:
     f.write(output)
