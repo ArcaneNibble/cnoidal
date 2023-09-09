@@ -58,5 +58,5 @@ output += block_compr
 
 #####
 
-with open('over_long_name.lxt2', 'wb') as f:
+with open('bogus_over_long_name.lxt2', 'wb') as f:
     f.write(output)
