@@ -1,0 +1,25 @@
+pub const LT_SECTION_END: u8 = 0;
+pub const LT_SECTION_CHG: u8 = 1;
+pub const LT_SECTION_SYNC_TABLE: u8 = 2;
+pub const LT_SECTION_FACNAME: u8 = 3;
+pub const LT_SECTION_FACNAME_GEOMETRY: u8 = 4;
+pub const LT_SECTION_TIMESCALE: u8 = 5;
+pub const LT_SECTION_TIME_TABLE: u8 = 6;
+pub const LT_SECTION_INITIAL_VALUE: u8 = 7;
+pub const LT_SECTION_DOUBLE_TEST: u8 = 8;
+pub const LT_SECTION_TIME_TABLE64: u8 = 9;
+pub const LT_SECTION_ZFACNAME_PREDEC_SIZE: u8 = 10;
+pub const LT_SECTION_ZFACNAME_SIZE: u8 = 11;
+pub const LT_SECTION_ZFACNAME_GEOMETRY_SIZE: u8 = 12;
+pub const LT_SECTION_ZSYNC_SIZE: u8 = 13;
+pub const LT_SECTION_ZTIME_TABLE_SIZE: u8 = 14;
+pub const LT_SECTION_ZCHG_PREDEC_SIZE: u8 = 15;
+pub const LT_SECTION_ZCHG_SIZE: u8 = 16;
+pub const LT_SECTION_ZDICTIONARY: u8 = 17;
+pub const LT_SECTION_ZDICTIONARY_SIZE: u8 = 18;
+pub const LT_SECTION_EXCLUDE_TABLE: u8 = 19;
+pub const LT_SECTION_TIMEZERO: u8 = 20;
+
+pub const LT_HDRID: u16 = 0x0138;
+pub const LT_LATEST_VERSION: u16 = 0x0004;
+pub const LT_TRLID: u8 = 0xB4;
