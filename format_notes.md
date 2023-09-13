@@ -699,7 +699,7 @@ If `srclen` is zero, the chunk contains `dstlen` uncompressed bytes. Otherwise, 
 
 `dstlen` is also used to compute the size of temporary buffers to use while decompressing (reallocating every time a larger `dstlen` is encountered), and <span style="color:red">if `srclen` ever exceeds this buffer size then a heap overflow occurs.</span>
 
-<span style="color:red">TODO CHECK ME Unlike in the contents of data blocks, if a variable-sized integer happens to exceed 16 bytes, an array on the stack is overflowed.</span>
+<span style="color:red">Unlike in the contents of data blocks, if a variable-sized integer happens to exceed 16 bytes, an array on the stack is overflowed.</span>
 
 Unlike LXT2, it is never possible to _directly_ store uncompressed data. One of the supported compression mechanisms must be used. However, uncompressed data can be stored inside the custom LZMA container.
 
@@ -779,7 +779,7 @@ If two signals (or two bits inside one vector signal, or even the separate bit p
 
 Double values are encoded as a 64-bit vector (i.e. a block of 64 contiguous entries in the vindex table) storing IEEE binary64 values.
 
-String values are encoded as a 32-bit vector (i.e. a block of 32 contiguous entries in the vindex table) storing an index into the string dictionary. <span style="color:red">TODO CHECK ME An out-of-bounds index causes invalid memory to be accessed.</span>
+String values are encoded as a 32-bit vector (i.e. a block of 32 contiguous entries in the vindex table) storing an index into the string dictionary. <span style="color:red">An out-of-bounds index causes invalid memory to be accessed.</span>
 
 TODO GIVE AN EXAMPLE
 
